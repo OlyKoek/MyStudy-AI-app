@@ -20,7 +20,7 @@ Section13/static/images/*
 /coverage
 
 # next.js
-/.next/
+*/frontend/*.next/*
 /out/
 
 # production
