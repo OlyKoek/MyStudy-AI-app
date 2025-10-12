@@ -1,5 +1,6 @@
-# GPU対応TensorFlowの公式イメージを使用
-FROM tensorflow/tensorflow:2.20.0-gpu
+# GPU対応TensorFlowの公式イメージを使用 (バージョンはホストPCのCUDAに合わせて適宜変更してください)
+# FROM tensorflow/tensorflow:2.20.0-gpu
+FROM tensorflow/tensorflow:2.19.0-gpu
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

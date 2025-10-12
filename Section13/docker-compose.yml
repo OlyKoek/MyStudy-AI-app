@@ -11,12 +11,8 @@ services:
       - FLASK_APP=classifier.py 
       - FLASK_ENV=development
       - FLASK_DEBUG=1             # HMRを有効化
-      - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+    device_requests:
+      - driver: nvidia
+        count: 1
+        capabilities:
+          - gpu
