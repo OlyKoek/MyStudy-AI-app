@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: fastapi-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/app:/app/app 
+      - ./backend/app/model:/app/app/model
+    environment:
+      - MODEL_PATH=/app/app/model/image_classifier.keras
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
