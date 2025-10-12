@@ -2,15 +2,26 @@ import os, shutil
 from flask import Flask, request, redirect, url_for, render_template
 from markupsafe import Markup
 from werkzeug.utils import secure_filename
-from tensorflow.keras.models import Sequential, load_model
 from PIL import Image
 import numpy as np
+
+# tensorflow.keras.modelsからkeras3に変更
+import keras
 import tensorflow as tf
 
 # GPUメモリの増殖対策
 gpus = tf.config.list_physical_devices('GPU')
 for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
+
+# 色々とモデル学習側をいじったらエラーになったので、以下を追加
+print("KERAS_VERSION:", keras.__version__)
+print("TF_VERSION:", tf.__version__)
+try:
+    from keras import backend as K
+    print("KERAS_BACKEND:", K.backend())
+except Exception as e:
+    print("KERAS_BACKEND_CHECK_FAILED:", e)
 
 
 UPLOAD_FOLDER = "./static/images/"
@@ -21,8 +32,13 @@ n_class = len(labels)
 img_size = 32
 n_result = 3  # 上位3つの結果を表示
 
+
+
 app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
+MODEL_PATH = "./image_classifier.keras"
+model = keras.models.load_model(MODEL_PATH, compile=False)
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -55,12 +71,11 @@ def result():
         image = Image.open(filepath)
         image = image.convert("RGB")
         image = image.resize((img_size, img_size))
-        x = np.array(image, dtype=float)
-        x = x.reshape(1, img_size, img_size, 3) / 255        
+        x = np.asarray(image, dtype="float32")
+        x = x.reshape(1, img_size, img_size, 3)    
 
         # 予測
-        model = load_model("./image_classifier.keras")
-        y = model.predict(x)[0]
+        y = model.predict(x, verbose=0)[0]
         sorted_idx = np.argsort(y)[::-1]  # 降順でソート
         result = ""
         for i in range(n_result):
