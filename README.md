@@ -1,2 +1,1 @@
-# Udemy-AIperfectMaster-colabo
-TDA
+# SampleKOREKARA
