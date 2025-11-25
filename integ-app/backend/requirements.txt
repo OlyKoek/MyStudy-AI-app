@@ -1,6 +1,8 @@
 fastapi
 uvicorn
-tensorflow
+torch
+torchvision
+transformers
 pillow
 python-multipart
-keras
+numpy
