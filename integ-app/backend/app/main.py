@@ -3,9 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.predict import router as predict_router
 
 app = FastAPI(
-    title="CNN Image Classifier API",
-    description="FastAPI version of the Flask CNN classifier",
-    version="1.0.0",
+    title="MINI CLIP Image Search API",
+    description="Multimodal image search using MINI CLIP (text-to-image and image-to-image)",
+    version="2.0.0",
 )
 
 app.add_middleware(
