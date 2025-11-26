@@ -9,8 +9,9 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./backend/app:/app/app 
+      - ./backend/app:/app/app
       - ./backend/app/model:/app/app/model
+      - ./data/memes:/app/app/static/memes
     environment:
       - MODEL_DIR=/app/app/model
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
