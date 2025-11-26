@@ -30,6 +30,11 @@ print(f"Vector DB loaded: {len(vector_db.items)} items")
 
 router = APIRouter(prefix="/predict", tags=["Prediction"])
 
+def convert_to_api_url(path: str) -> str:
+    """ローカルパスをAPIのURL形式に変換"""
+    # ./meme/... -> /static/memes/...
+    return path.replace("./meme/", "/static/")
+
 @router.post("/text")
 async def search_by_text(query: str = Form(...), top_k: int = Form(5)):
     """テキストクエリで画像を検索"""
@@ -41,8 +46,8 @@ async def search_by_text(query: str = Form(...), top_k: int = Form(5)):
             "query": query,
             "results": [
                 {
-                    "image_path": item["image_path"],
-                    "caption": item.get("caption", ""),
+                    "image_url": convert_to_api_url(item["image_path"]),
+                    "caption": item.get("text", ""),
                     "similarity": round(float(score), 4)
                 }
                 for score, item in results
@@ -65,8 +70,8 @@ async def search_by_image(file: UploadFile = File(...), top_k: int = Form(5)):
         return {
             "results": [
                 {
-                    "image_path": item["image_path"],
-                    "caption": item.get("caption", ""),
+                    "image_url": convert_to_api_url(item["image_path"]),
+                    "caption": item.get("text", ""),
                     "similarity": round(float(score), 4)
                 }
                 for score, item in results
