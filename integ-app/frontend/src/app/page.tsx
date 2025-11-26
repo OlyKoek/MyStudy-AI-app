@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
+import Image from "next/image";
 
 type SearchResult = {
-  image_path: string;
+  image_url: string;
   caption: string;
   similarity: number;
 };
@@ -15,6 +16,7 @@ export default function Home() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchMode, setSearchMode] = useState<"text" | "image">("text");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleTextSearch = async () => {
     if (!textQuery.trim()) return;
@@ -23,7 +25,7 @@ export default function Home() {
     try {
       const formData = new FormData();
       formData.append("query", textQuery);
-      formData.append("top_k", "5");
+      formData.append("top_k", "12");
 
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/predict/text`, {
         method: "POST",
@@ -45,7 +47,7 @@ export default function Home() {
     try {
       const formData = new FormData();
       formData.append("file", imageFile);
-      formData.append("top_k", "5");
+      formData.append("top_k", "12");
 
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/predict/image`, {
         method: "POST",
@@ -67,108 +69,224 @@ export default function Home() {
     setPreview(URL.createObjectURL(file));
   };
 
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
-    <div className="flex flex-col items-center min-h-screen bg-gray-50 p-6">
-      <h1 className="text-4xl font-bold mb-2 text-blue-600">MINI CLIP Image Search</h1>
-      <p className="text-gray-600 mb-8">テキストまたは画像で類似画像を検索</p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      {/* Header */}
+      <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  MINI CLIP Search
+                </h1>
+                <p className="text-xs text-gray-500">AI-Powered Image Discovery</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
 
-      {/* モード切替 */}
-      <div className="flex gap-4 mb-6">
-        <button
-          onClick={() => setSearchMode("text")}
-          className={`px-6 py-2 rounded-lg font-semibold transition ${
-            searchMode === "text"
-              ? "bg-blue-600 text-white"
-              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-          }`}
-        >
-          テキスト検索
-        </button>
-        <button
-          onClick={() => setSearchMode("image")}
-          className={`px-6 py-2 rounded-lg font-semibold transition ${
-            searchMode === "image"
-              ? "bg-blue-600 text-white"
-              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-          }`}
-        >
-          画像検索
-        </button>
-      </div>
-
-      {/* テキスト検索UI */}
-      {searchMode === "text" && (
-        <div className="w-full max-w-2xl">
-          <div className="flex gap-2 mb-6">
-            <input
-              type="text"
-              value={textQuery}
-              onChange={(e) => setTextQuery(e.target.value)}
-              placeholder="検索キーワードを入力 (例: 猫, 風景, 笑顔)"
-              className="flex-1 p-3 border border-gray-300 rounded-lg text-gray-900"
-              onKeyDown={(e) => e.key === "Enter" && handleTextSearch()}
-            />
+      {/* Search Section */}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Mode Switcher */}
+        <div className="flex justify-center mb-8">
+          <div className="inline-flex bg-white rounded-2xl p-1 shadow-lg border border-gray-200">
             <button
-              onClick={handleTextSearch}
-              disabled={loading || !textQuery.trim()}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              onClick={() => setSearchMode("text")}
+              className={`px-8 py-3 rounded-xl font-semibold transition-all duration-200 ${
+                searchMode === "text"
+                  ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-md"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
             >
-              {loading ? "検索中..." : "検索"}
+              <span className="flex items-center space-x-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                <span>Text Search</span>
+              </span>
+            </button>
+            <button
+              onClick={() => setSearchMode("image")}
+              className={`px-8 py-3 rounded-xl font-semibold transition-all duration-200 ${
+                searchMode === "image"
+                  ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-md"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <span className="flex items-center space-x-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span>Image Search</span>
+              </span>
             </button>
           </div>
         </div>
-      )}
 
-      {/* 画像検索UI */}
-      {searchMode === "image" && (
-        <div className="w-full max-w-2xl">
-          <input
-            type="file"
-            onChange={handleFileChange}
-            accept="image/*"
-            className="mb-4 p-2 border border-gray-300 rounded-lg cursor-pointer text-gray-900 w-full"
-          />
-          {preview && (
-            <div className="mb-4 flex justify-center">
-              <img
-                src={preview}
-                alt="preview"
-                className="w-64 h-64 object-cover rounded-lg border-2 border-gray-300"
+        {/* Search Input */}
+        {searchMode === "text" ? (
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-2">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={textQuery}
+                onChange={(e) => setTextQuery(e.target.value)}
+                placeholder="Search for memes... (e.g., funny cat, programming humor)"
+                className="flex-1 px-6 py-4 text-lg rounded-xl focus:outline-none text-gray-900"
+                onKeyDown={(e) => e.key === "Enter" && handleTextSearch()}
               />
+              <button
+                onClick={handleTextSearch}
+                disabled={loading || !textQuery.trim()}
+                className="px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
+              >
+                {loading ? (
+                  <span className="flex items-center space-x-2">
+                    <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Searching...</span>
+                  </span>
+                ) : (
+                  "Search"
+                )}
+              </button>
             </div>
-          )}
-          <button
-            onClick={handleImageSearch}
-            disabled={loading || !imageFile}
-            className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            {loading ? "検索中..." : "類似画像を検索"}
-          </button>
-        </div>
-      )}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <input
+              ref={fileInputRef}
+              type="file"
+              onChange={handleFileChange}
+              accept="image/*"
+              className="hidden"
+            />
+            
+            {!preview ? (
+              <div
+                onClick={triggerFileInput}
+                className="bg-white rounded-2xl shadow-lg border-2 border-dashed border-gray-300 hover:border-blue-500 transition-all cursor-pointer p-12"
+              >
+                <div className="flex flex-col items-center space-y-4 text-gray-500">
+                  <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  <div className="text-center">
+                    <p className="text-lg font-semibold text-gray-700">Click to upload an image</p>
+                    <p className="text-sm text-gray-500">PNG, JPG up to 10MB</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+                <div className="flex items-start space-x-6">
+                  <div className="relative w-48 h-48 flex-shrink-0">
+                    <img
+                      src={preview}
+                      alt="preview"
+                      className="w-full h-full object-cover rounded-xl border-2 border-gray-200"
+                    />
+                  </div>
+                  <div className="flex-1 space-y-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Search with this image</h3>
+                      <p className="text-sm text-gray-500">Find similar memes using AI-powered visual search</p>
+                    </div>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={handleImageSearch}
+                        disabled={loading}
+                        className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50"
+                      >
+                        {loading ? "Searching..." : "Search Similar"}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setPreview(null);
+                          setImageFile(null);
+                        }}
+                        className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all"
+                      >
+                        Change
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
-      {/* 検索結果 */}
+      {/* Results Section */}
       {results.length > 0 && (
-        <div className="w-full max-w-4xl mt-8">
-          <h2 className="text-2xl font-bold mb-4 text-gray-800">検索結果</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">
+              Found {results.length} results
+            </h2>
+            <p className="text-gray-500 mt-1">Sorted by relevance</p>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {results.map((result, i) => (
               <div
                 key={i}
-                className="bg-white p-4 rounded-lg shadow-md border border-gray-200"
+                className="group bg-white rounded-2xl shadow-md hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100"
               >
-                <div className="mb-2 text-gray-700 font-medium">
-                  類似度: {(result.similarity * 100).toFixed(1)}%
+                <div className="relative aspect-square overflow-hidden bg-gray-100">
+                  <img
+                    src={`${process.env.NEXT_PUBLIC_API_URL}${result.image_url}`}
+                    alt={result.caption || "Search result"}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    onError={(e) => {
+                      e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23ddd' width='100' height='100'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23999'%3ENo Image%3C/text%3E%3C/svg%3E";
+                    }}
+                  />
+                  <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full">
+                    <span className="text-xs font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                      {(result.similarity * 100).toFixed(0)}%
+                    </span>
+                  </div>
                 </div>
-                <div className="text-sm text-gray-600 mb-2">
-                  {result.caption || "キャプションなし"}
-                </div>
-                <div className="text-xs text-gray-400 break-all">
-                  {result.image_path}
-                </div>
+                {result.caption && (
+                  <div className="p-4">
+                    <p className="text-sm text-gray-700 line-clamp-2">
+                      {result.caption}
+                    </p>
+                  </div>
+                )}
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!loading && results.length === 0 && (
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+          <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full mb-6">
+            <svg className="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">Start Your Search</h3>
+          <p className="text-gray-600">
+            Use text or image to find similar memes powered by AI
+          </p>
         </div>
       )}
     </div>
