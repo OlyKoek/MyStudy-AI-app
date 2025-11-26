@@ -16,6 +16,7 @@ export default function Home() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchMode, setSearchMode] = useState<"text" | "image">("text");
+  const [selectedImage, setSelectedImage] = useState<SearchResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleTextSearch = async () => {
@@ -247,7 +248,10 @@ export default function Home() {
                 key={i}
                 className="group bg-white rounded-2xl shadow-md hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100"
               >
-                <div className="relative aspect-square overflow-hidden bg-gray-100">
+                <div
+                  className="relative aspect-square overflow-hidden bg-gray-100 cursor-pointer"
+                  onClick={() => setSelectedImage(result)}
+                >
                   <img
                     src={`${process.env.NEXT_PUBLIC_API_URL}${result.image_url}`}
                     alt={result.caption || "Search result"}
@@ -287,6 +291,51 @@ export default function Home() {
           <p className="text-gray-600">
             Use text or image to find similar memes powered by AI
           </p>
+        </div>
+      )}
+
+      {/* Image Modal */}
+      {selectedImage && (
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setSelectedImage(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] w-full">
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors"
+            >
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <div className="bg-white rounded-2xl overflow-hidden shadow-2xl">
+              <img
+                src={`${process.env.NEXT_PUBLIC_API_URL}${selectedImage.image_url}`}
+                alt={selectedImage.caption || "Enlarged view"}
+                className="w-full h-auto max-h-[70vh] object-contain"
+                onClick={(e) => e.stopPropagation()}
+              />
+              {selectedImage.caption && (
+                <div className="p-6 border-t border-gray-200">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="text-gray-700 leading-relaxed">
+                        {selectedImage.caption}
+                      </p>
+                    </div>
+                    <div className="ml-4 flex-shrink-0">
+                      <span className="inline-block px-3 py-1 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full">
+                        <span className="text-sm font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                          {(selectedImage.similarity * 100).toFixed(0)}% Match
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
