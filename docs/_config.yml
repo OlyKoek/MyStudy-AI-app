@@ -1,0 +1,31 @@
+# Jekyll設定
+theme: jekyll-theme-cayman
+
+# サイト情報
+title: Oly Portfolio
+description: AI and Web Development Projects - マルチモーダル検索アプリ開発中
+author: Oly
+
+# GitHub情報
+github:
+  repository_url: https://github.com/OlyKoek/Udemy-AIperfectMaster-colabo
+  is_project_page: true
+
+# プラグイン
+plugins:
+  - jekyll-relative-links
+
+# 相対リンク設定
+relative_links:
+  enabled: true
+  collections: true
+
+# Markdown設定
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+# 除外ファイル
+exclude:
+  - README.md
