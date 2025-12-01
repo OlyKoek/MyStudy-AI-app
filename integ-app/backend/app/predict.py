@@ -1,60 +1,81 @@
 import os
-from io import BytesIO
+import torch
 import numpy as np
-from fastapi import APIRouter, UploadFile, File, HTTPException
-from tensorflow import config as tf_config
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form
+from typing import Optional
 from PIL import Image
-import keras
+from io import BytesIO
 
-# GPUメモリ対策
-gpus = tf_config.list_physical_devices('GPU')
-for gpu in gpus:
-    try:
-        tf_config.experimental.set_memory_growth(gpu, True)
-    except Exception as e:
-        print("GPU memory growth setting failed:", e)
+from app.encoders import TextEncoder, ImageEncoder
+from app.vector_db import load_vector_db
 
-print("KERAS_VERSION:", keras.__version__)
+# デバイス設定
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"🔧 Using device: {DEVICE}")
 
+# モデルパス
+MODEL_DIR = os.getenv("MODEL_DIR", "app/model")
+TEXT_PROJECTOR_PATH = os.path.join(MODEL_DIR, "text_projector.pt")
+IMAGE_PROJECTOR_PATH = os.path.join(MODEL_DIR, "image_projector.pt")
+VECTOR_DB_PATH = os.path.join(MODEL_DIR, "vector_db.json")
 
+# エンコーダーとベクトルDBの初期化
+text_encoder = TextEncoder(projector_path=TEXT_PROJECTOR_PATH, device=DEVICE)
+image_encoder = ImageEncoder(projector_path=IMAGE_PROJECTOR_PATH, device=DEVICE)
+vector_db = load_vector_db(VECTOR_DB_PATH)
 
-# Load model
-MODEL_PATH = os.getenv("MODEL_PATH", "app/model/image_classifier.keras")
-model = keras.models.load_model(MODEL_PATH, compile=False)
-print("✅ Model loaded:", MODEL_PATH)
-
-
-labels = ["飛行機", "自動車", "鳥", "猫", "鹿", "犬", "カエル", "馬", "船", "トラック"]
-n_result = 3
-img_size = 32
+print(f"Text encoder loaded from {TEXT_PROJECTOR_PATH}")
+print(f"Image encoder loaded from {IMAGE_PROJECTOR_PATH}")
+print(f"Vector DB loaded: {len(vector_db.items)} items")
 
 router = APIRouter(prefix="/predict", tags=["Prediction"])
 
-# ---------------------------
-# Endpoint
-# ---------------------------
-@router.post("/")
-async def predict_image(file: UploadFile = File(...)):
-    """画像を受け取り、モデルで分類結果を返す"""
+def convert_to_api_url(path: str) -> str:
+    """ローカルパスをAPIのURL形式に変換"""
+    # ./meme/... -> /static/memes/...
+    return path.replace("./meme/", "/static/")
+
+@router.post("/text")
+async def search_by_text(query: str = Form(...), top_k: int = Form(5)):
+    """テキストクエリで画像を検索"""
+    try:
+        query_vec = text_encoder.encode(query).cpu().numpy()
+        results = vector_db.search(query_vec, top_k=top_k, type_filter="image")
+        
+        return {
+            "query": query,
+            "results": [
+                {
+                    "image_url": convert_to_api_url(item["image_path"]),
+                    "caption": item.get("text", ""),
+                    "similarity": round(float(score), 4)
+                }
+                for score, item in results
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/image")
+async def search_by_image(file: UploadFile = File(...), top_k: int = Form(5)):
+    """画像で類似画像を検索"""
     try:
         contents = await file.read()
         image = Image.open(BytesIO(contents)).convert("RGB")
-        image = image.resize((img_size, img_size))
-        x = np.asarray(image, dtype="float32")
-        x = x.reshape(1, img_size, img_size, 3)
-
-        y = model.predict(x, verbose=0)[0]
-        sorted_idx = np.argsort(y)[::-1]
-
-        results = []
-        for i in range(n_result):
-            idx = sorted_idx[i]
-            results.append({
-                "label": labels[idx],
-                "probability": round(float(y[idx]), 4)
-            })
-
-        return {"predictions": results}
-
+        
+        query_vec = image_encoder.encode(image).cpu().numpy()
+        results = vector_db.search(query_vec, top_k=top_k, type_filter="image")
+        
+        return {
+            "results": [
+                {
+                    "image_url": convert_to_api_url(item["image_path"]),
+                    "caption": item.get("text", ""),
+                    "similarity": round(float(score), 4)
+                }
+                for score, item in results
+            ]
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
